@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RepoExplainer - Agentic AI</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- RESET & ROOT --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            /* Gradients */
+            --grad-start: #ff4500; 
+            --grad-end: #ff8c00;   
+            --gradient-main: linear-gradient(135deg, #ff4500 0%, #ff8c00 100%);
+            
+            /* Base Colors */
+            --bg-app: #0d0d0f;
+            --bg-sidebar: #141416;
+            --bg-card: #19191c; /* Slightly lighter than app for the card */
+            --bg-input: #212124;
+            --text-main: #f4f4f5;
+            --text-muted: #9ca3af;
+            --text-light: #ffffff;
+            --border-subtle: rgba(255, 255, 255, 0.06);
+            --shadow-deep: 0 20px 50px rgba(0,0,0,0.8);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-app);
+            height: 100vh; width: 100vw;
+            display: flex; overflow: hidden;
+            color: var(--text-main);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: 260px; background: var(--bg-sidebar);
+            border-right: 1px solid var(--border-subtle);
+            padding: 24px 16px; display: flex; flex-direction: column; flex-shrink: 0;
+        }
+
+        .brand { display: flex; align-items: center; gap: 12px; font-size: 1.15rem; font-weight: 700; margin-bottom: 32px; color: var(--text-light); }
+        .brand-icon { width: 36px; height: 36px; background: var(--gradient-main); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem; box-shadow: 0 4px 15px rgba(255, 69, 0, 0.4); }
+
+        .nav-list { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+        .nav-item { display: flex; align-items: center; gap: 14px; padding: 10px 12px; border-radius: 10px; cursor: pointer; transition: all 0.2s ease; color: var(--text-muted); font-size: 0.9rem; font-weight: 500; }
+        .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text-light); }
+        .nav-item.active { background: rgba(255, 69, 0, 0.12); color: #ff8c00; }
+
+        .new-chat-btn { background: var(--gradient-main); color: white; border: none; padding: 12px; border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px; transition: 0.2s; box-shadow: 0 4px 20px rgba(255, 69, 0, 0.3); }
+        .new-chat-btn:hover { transform: scale(1.02); box-shadow: 0 6px 25px rgba(255, 69, 0, 0.5); }
+
+        .sidebar-footer { border-top: 1px solid var(--border-subtle); padding-top: 16px; }
+        .user-profile { display: flex; align-items: center; gap: 12px; }
+        .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--gradient-main); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.8rem; box-shadow: 0 2px 10px rgba(255, 69, 0, 0.3); }
+
+        /* --- CHAT AREA --- */
+        .main-content { flex: 1; display: flex; flex-direction: column; padding: 24px 40px 20px 40px; height: 100vh; background: var(--bg-app); position: relative; }
+
+        .top-bar { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 12px; padding: 0 4px; }
+        .history-trigger { background: rgba(255,255,255,0.03); padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border-subtle); color: var(--text-muted); cursor: pointer; font-size: 0.85rem; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .history-trigger:hover { border-color: rgba(255,255,255,0.15); color: var(--text-light); background: rgba(255,255,255,0.06); }
+
+        .chat-container { flex: 1; overflow-y: auto; padding-right: 10px; margin: 0; display: flex; flex-direction: column; gap: 24px; padding-bottom: 10px;}
+        .chat-container::-webkit-scrollbar { width: 4px; }
+        .chat-container::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
+
+        .msg-wrapper { display: flex; width: 100%; animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
+        .msg-wrapper.user { justify-content: flex-end; }
+        .msg-wrapper.ai { justify-content: flex-start; }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- USER BUBBLE --- */
+        .msg-bubble.user { max-width: 75%; padding: 14px 20px; border-radius: 16px 16px 4px 16px; background: var(--gradient-main); color: white; line-height: 1.6; font-size: 0.95rem; box-shadow: 0 8px 25px rgba(255, 69, 0, 0.3); }
+
+        /* --- THE REQUESTED AI ANSWER CARD --- */
+        .msg-bubble.ai { 
+            max-width: 88%; width: 100%; 
+            border-radius: 16px; 
+            padding: 0; 
+            overflow: hidden; 
+            position: relative;
+            
+            /* 1. ATTRACTIVE GRADIENT BORDER (The "Padded Border" trick) */
+            background: linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
+                        linear-gradient(135deg, #ff4500 0%, #ff8c00 100%) border-box;
+            border: 1px solid transparent;
+
+            /* 2. GOOD LOOKING BACKGROUND (Slightly lighter than the main dark theme) */
+            background-color: #18181b;
+            
+            /* 3. DEPTH & VISIBILITY */
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6), 0 0 30px rgba(255, 69, 0, 0.05);
+        }
+
+        /* --- ASSESSMENT MENU CHIPS --- */
+        .assessment-menu { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+        .assessment-chip { 
+            background: rgba(255, 69, 0, 0.1); 
+            border: 1px solid rgba(255, 69, 0, 0.3); 
+            color: #f4f4f5; 
+            padding: 12px 16px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            text-align: left;
+            transition: 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .assessment-chip:hover { 
+            background: rgba(255, 69, 0, 0.2); 
+            border-color: #ff8c00; 
+            transform: translateX(4px);
+        }
+        .assessment-chip i { color: #ff8c00; font-size: 1.1rem; }
+        .assessment-chip span { color: var(--text-muted); font-size: 0.8rem; display: block; font-weight: 400; margin-top: 2px; 
+        }
+
+        .ai-card-header { padding: 16px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); display: flex; justify-content: space-between; align-items: center; }
+        .ai-card-header h4 { color: var(--text-light); font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 10px; }
+        .ai-card-header h4 i { color: #ff4500; }
+
+        .ai-card-body { padding: 20px; }
+
+        /* --- CODE BLOCK --- */
+        .code-block-wrapper { position: relative; border-radius: 12px; margin-bottom: 16px; background: #0d0d10; border: 1px solid rgba(255,255,255,0.05); box-shadow: inset 0 2px 10px rgba(0,0,0,0.4); }
+        .code-block-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); background: #121215; border-radius: 12px 12px 0 0; }
+        .code-lang-tag { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 8px;}
+        .code-copy-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.75rem; display: flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .code-copy-btn:hover { color: #ff8c00; }
+
+        .code-block { padding: 16px 20px; font-family: 'JetBrains Mono', 'Consolas', monospace; font-size: 0.85rem; color: #e4e4e7; overflow-x: auto; }
+        .code-line { display: block; line-height: 1.7; font-weight: 400;}
+        .line-num { color: #3f3f46; margin-right: 20px; user-select: none; width: 20px; display: inline-block;}
+        .keyword { color: #f472b6; font-weight: 600; }
+        .func { color: #60a5fa; }
+        .string { color: #34d399; }
+        .comment { color: #52525b; font-style: italic; }
+
+        /* --- TEXT EXPLANATION --- */
+        .ai-explanation { color: #f4f4f5; font-size: 0.95rem; line-height: 1.8; letter-spacing: -0.01em; }
+        .ai-explanation strong { color: #ffffff; font-weight: 600; }
+        .ai-explanation code { background: rgba(255,255,255,0.08); padding: 2px 8px; border-radius: 6px; font-size: 0.85rem; color: #fbbf24; font-weight: 500; font-family: 'JetBrains Mono', monospace; }
+        
+        .ai-actions { display: flex; gap: 12px; padding: 12px 20px; border-top: 1px solid rgba(255, 255, 255, 0.06); background: rgba(0,0,0,0.2); }
+        .ai-actions button { background: transparent; border: none; color: var(--text-muted); cursor: pointer; transition: 0.2s; font-weight: 500; font-size: 0.8rem; display: flex; align-items: center; gap: 6px; }
+        .ai-actions button:hover { color: var(--text-light); }
+        .ai-actions button:last-child { margin-left: auto; color: #ff8c00; background: rgba(255, 69, 0, 0.1); padding: 6px 14px; border-radius: 20px; }
+        .ai-actions button:last-child:hover { background: rgba(255, 69, 0, 0.2); }
+
+        /* --- INPUT FIELD (MODIFIED) --- */
+        .input-wrapper { 
+            display: flex; align-items: center; 
+            background: var(--bg-input); 
+            padding: 6px 6px 6px 20px; 
+            border-radius: 40px; 
+            margin-top: 16px; 
+            transition: 0.3s; 
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4); 
+            
+            /* NEW: Attractive Gradient Border Line around the input */
+            background: linear-gradient(var(--bg-input), var(--bg-input)) padding-box,
+                        linear-gradient(135deg, #ff4500 0%, #ff8c00 100%) border-box;
+            border: 1px solid transparent;
+        }
+        .input-wrapper:focus-within { 
+            box-shadow: 0 0 0 1px rgba(255, 69, 0, 0.3), inset 0 0 20px rgba(255, 69, 0, 0.05); 
+            transform: translateY(-1px);
+        }
+        .input-wrapper input { flex: 1; border: none; outline: none; padding: 14px 0; font-size: 0.95rem; background: transparent; color: var(--text-main); }
+        .input-wrapper input::placeholder { color: #52525b; }
+
+        .input-tools { display: flex; gap: 12px; color: #52525b; margin-right: 8px; }
+        .input-tools i { cursor: pointer; transition: 0.2s; padding: 6px; border-radius: 6px; }
+        .input-tools i:hover { background: rgba(255,255,255,0.05); color: var(--text-muted); }
+        
+        .chat-send-btn { background: var(--gradient-main); color: white; border: none; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; transition: 0.2s ease; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(255, 69, 0, 0.4); }
+        .chat-send-btn:hover { transform: scale(1.05); box-shadow: 0 8px 25px rgba(255, 69, 0, 0.6); }
+
+        .footer-text { color: #3f3f46; font-size: 0.7rem; text-align: center; margin-top: 12px; font-weight: 400; }
+
+        @media (max-width: 900px) { .sidebar { width: 72px; padding: 20px 12px; } .brand span, .nav-item span, .user-profile div, .new-chat-btn span { display: none; } .new-chat-btn { padding: 10px; } .msg-bubble.ai { max-width: 95%; } }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div>
+            <div class="brand">
+                <div class="brand-icon"><i class="fa-solid fa-robot"></i></div>
+                <span>RepoAI</span>
+            </div>
+            <button class="new-chat-btn"><i class="fa-solid fa-plus"></i> <span>New Analysis</span></button>
+            <nav class="nav-list">
+                <div class="nav-item active"><i class="fa-regular fa-comment-dots"></i> <span>Current Thread</span></div>
+                <!-- <div class="nav-item"><i class="fa-regular fa-clock"></i> <span>History</span></div>
+                <div class="nav-item"><i class="fa-regular fa-bookmark"></i> <span>Saved Repos</span></div> -->
+                
+                <div class="nav-item assessment-btn" style="margin-top: 15px; border: 1px solid rgba(255, 69, 0, 0.4); color: #ff8c00;">
+                     <i class="fa-solid fa-shield-halved"></i> <span>Generate Report</span>
+                </div>
+            </nav>
+        </div>
+        <div class="sidebar-footer">
+            <div class="user-profile">
+                <div class="user-avatar">JD</div>
+                <div>
+                    <div style="font-size:0.85rem; font-weight:500; letter-spacing:-0.01em;">Developer</div>
+                    <div style="font-size:0.7rem; color:#52525b;">Pro Account</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="top-bar">
+            <!-- <div class="history-trigger">
+                <i class="fa-regular fa-clock"></i> Session History <i class="fa-solid fa-chevron-down" style="font-size:0.65rem;"></i>
+            </div> -->
+        </div>
+
+        <div class="chat-container" id="chatContainer">
+
+        </div>
+
+        <div class="input-wrapper">
+            <input type="text" id="chatInput" placeholder="Paste GitHub URL or ask a question...">
+            <div class="input-tools">
+                <i class="fa-solid fa-paperclip"></i>
+            </div>
+            <button type="button" class="chat-send-btn" id="sendBtn"><i class="fa-solid fa-arrow-up"></i></button>
+        </div>
+        <div class="footer-text">AI can make mistakes. Verify critical logic in private repositories.</div>
+    </main>
+
+   <script>
+    const sendBtn = document.getElementById('sendBtn');
+    const input = document.getElementById('chatInput');
+    const container = document.getElementById('chatContainer');
+    const newChatBtn = document.querySelector('.new-chat-btn');
+
+    const API_URL = 'http://127.0.0.1:8000/chat/stream';
+
+    let repoUrl = null;
+    let isLoading = false;
+
+    const AUDIT_PROMPTS = {
+        full: {
+            display: "Run a comprehensive deep audit and generate a full architecture report.",
+            api: "Perform a comprehensive Deep Audit of this repository. Generate a report containing: 1. Project Overview (architecture and tech stack) 2. Critical Weaknesses (flaws and bottlenecks) 3. Suggested Solutions. Deeply investigate the code."
+        },
+        security: {
+            display: "Run a targeted Security & Vulnerability Audit.",
+            api: "Perform a deep security audit of this repository. Investigate the code for vulnerabilities, unsafe authentication, injection risks, and bad data handling. Generate a report containing: 1. Security Posture Overview 2. Critical Vulnerabilities found 3. Hardening Solutions."
+        },
+        codeQuality: {
+            display: "Run a Code Quality & Maintainability Assessment.",
+            api: "Perform a code quality assessment on this repository. Look for anti-patterns, DRY violations, complex functions, and technical debt. Generate a report containing: 1. Codebase Health Overview 2. Major Code Smells & Bad Practices 3. Refactoring Recommendations."
+        }
+    };
+
+    // --------------------------------------------------
+    // Escape HTML
+    // --------------------------------------------------
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+
+    // --------------------------------------------------
+    // Add User Message
+    // --------------------------------------------------
+
+    function addUserMessage(text) {
+        const uDiv = document.createElement('div');
+
+        uDiv.className = 'msg-wrapper user';
+
+        uDiv.innerHTML = `
+            <div class="msg-bubble user">
+                ${escapeHtml(text)}
+            </div>
+        `;
+
+        container.appendChild(uDiv);
+        scrollToBottom();
+    }
+
+
+    // --------------------------------------------------
+    // Add AI Message
+    // --------------------------------------------------
+
+    // function addAIMessage(text) {
+    //     const aDiv = document.createElement('div');
+
+    //     aDiv.className = 'msg-wrapper ai';
+
+    //     aDiv.innerHTML = `
+    //         <div class="msg-bubble ai">
+    //             <div class="ai-analysis-card">
+
+    //                 <div class="ai-card-header">
+    //                     <h4>
+    //                         <i class="fa-solid fa-robot"></i>
+    //                         RepoAI Analysis
+    //                     </h4>
+    //                 </div>
+
+    //                 <div class="ai-card-body">
+    //                     <div class="ai-explanation">
+    //                         ${formatAnswer(text)}
+    //                     </div>
+    //                 </div>
+
+    //                 <div class="ai-actions">
+    //                     <button onclick="copyAnswer(this)">
+    //                         <i class="fa-regular fa-copy"></i>
+    //                         Copy
+    //                     </button>
+
+    //                     <button>
+    //                         <i class="fa-regular fa-thumbs-up"></i>
+    //                         Helpful
+    //                     </button>
+
+    //                     <button>
+    //                         <i class="fa-regular fa-thumbs-down"></i>
+    //                         Bad analysis
+    //                     </button>
+    //                 </div>
+
+    //             </div>
+    //         </div>
+    //     `;
+
+    //     container.appendChild(aDiv);
+    //     scrollToBottom();
+    // }
+
+    function addAIMessage(text) {
+        const aDiv = document.createElement('div');
+
+        aDiv.className = 'msg-wrapper ai';
+
+        aDiv.innerHTML = `
+            <div class="msg-bubble ai">
+                <div class="ai-analysis-card">
+
+                    <div class="ai-card-header">
+                        <h4>
+                            <i class="fa-solid fa-robot"></i>
+                            RepoAI Analysis
+                        </h4>
+                    </div>
+
+                    <div class="ai-card-body">
+                        <div class="ai-explanation">
+                            ${formatAnswer(text)}
+                        </div>
+                    </div>
+
+                    <div class="ai-actions">
+                        <button onclick="copyAnswer(this)">
+                            <i class="fa-regular fa-copy"></i>
+                            Copy
+                        </button>
+
+                        <!-- ADD THE DOWNLOAD BUTTON HERE -->
+                        <button onclick="downloadReport(this)">
+                            <i class="fa-solid fa-download"></i>
+                            Download Report
+                        </button>
+
+                        <button>
+                            <i class="fa-regular fa-thumbs-up"></i>
+                            Helpful
+                        </button>
+
+                        <button>
+                            <i class="fa-regular fa-thumbs-down"></i>
+                            Bad analysis
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        `;
+
+        container.appendChild(aDiv);
+        scrollToBottom();
+    }
+
+    // --------------------------------------------------
+    // Loading Message
+    // --------------------------------------------------
+
+    function addLoadingMessage() {
+        const aDiv = document.createElement('div');
+
+        aDiv.className = 'msg-wrapper ai';
+        aDiv.id = 'loadingMessage';
+
+        aDiv.innerHTML = `
+            <div class="msg-bubble ai">
+                <div class="ai-analysis-card">
+
+                    <div class="ai-card-header">
+                        <h4>
+                            <i class="fa-solid fa-robot"></i>
+                            RepoAI
+                        </h4>
+                    </div>
+
+                    <div class="ai-card-body">
+                        <div class="ai-explanation" id="loadingStatusText">
+                            <i class="fa-solid fa-circle-notch fa-spin"></i>
+                            Analyzing repository...
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        `;
+
+        container.appendChild(aDiv);
+        scrollToBottom();
+    }
+
+
+    // --------------------------------------------------
+    // Update Loading Status Text (live status updates)
+    // --------------------------------------------------
+
+    function updateLoadingStatus(message) {
+        const statusEl = document.getElementById('loadingStatusText');
+
+        if (statusEl) {
+            statusEl.innerHTML = `
+                <i class="fa-solid fa-circle-notch fa-spin"></i>
+                ${escapeHtml(message)}
+            `;
+        }
+    }
+
+    // --------------------------------------------------
+// Final Assessment Logic
+// --------------------------------------------------
+
+    // --------------------------------------------------
+// Deep Audit Logic
+// --------------------------------------------------
+// --------------------------------------------------
+// Deep Audit Logic (Trigger Menu)
+// --------------------------------------------------
+const assessmentBtn = document.querySelector('.assessment-btn');
+
+assessmentBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    showAssessmentMenu();
+});
+
+    // --------------------------------------------------
+    // Remove Loading
+    // --------------------------------------------------
+
+    function removeLoadingMessage() {
+        const loading = document.getElementById('loadingMessage');
+
+        if (loading) {
+            loading.remove();
+        }
+    }
+
+
+    // --------------------------------------------------
+    // Basic Markdown Formatting
+    // --------------------------------------------------
+
+    function formatAnswer(text) {
+
+        let html = escapeHtml(text);
+
+        // Code blocks
+        html = html.replace(
+            /```([\s\S]*?)```/g,
+            '<pre style="background:#0d0d10;padding:16px;border-radius:10px;overflow-x:auto;margin:15px 0;"><code>$1</code></pre>'
+        );
+
+        // Inline code
+        html = html.replace(
+            /`([^`]+)`/g,
+            '<code>$1</code>'
+        );
+
+        // Bold
+        html = html.replace(
+            /\*\*(.*?)\*\*/g,
+            '<strong>$1</strong>'
+        );
+
+        // Line breaks
+        html = html.replace(/\n/g, '<br>');
+
+        return html;
+    }
+
+
+    // --------------------------------------------------
+    // Extract GitHub URL
+    // --------------------------------------------------
+
+    function extractRepoUrl(text) {
+
+        const match = text.match(
+            /https:\/\/github\.com\/[^\s/]+\/[^\s/]+/
+        );
+
+        return match ? match[0].replace(/[.,)]$/, '') : null;
+    }
+
+
+    // --------------------------------------------------
+    // Parse one raw SSE event block into { eventType, data }
+    //
+    // A single SSE message looks like:
+    //   event: status
+    //   data: {"message": "..."}
+    //
+    // Messages are separated from each other by a BLANK LINE,
+    // not just "\n". The previous version of this code checked
+    // `line.startsWith('status ')` / `line.startsWith('answer ')`,
+    // which never matched the real "event: status" / "event: answer"
+    // lines the backend actually sends — so finalAnswer was always
+    // empty. This parses the spec correctly.
+    // --------------------------------------------------
+
+    function parseSSEEvent(rawBlock) {
+
+        let eventType = null;
+        let dataStr = null;
+
+        const lines = rawBlock.split('\n');
+
+        for (const line of lines) {
+
+            if (line.startsWith('event:')) {
+                eventType = line.slice(6).trim();
+            } else if (line.startsWith('data:')) {
+                dataStr = line.slice(5).trim();
+            }
+        }
+
+        if (!eventType || dataStr === null) {
+            return null;
+        }
+
+        try {
+            return {
+                eventType,
+                data: JSON.parse(dataStr)
+            };
+        } catch (e) {
+            console.warn('Could not parse SSE data JSON:', dataStr);
+            return null;
+        }
+    }
+
+
+    // --------------------------------------------------
+    // Send Message
+    // --------------------------------------------------
+
+    // --------------------------------------------------
+// Send Message (Updated to support hidden prompts)
+// --------------------------------------------------
+// --------------------------------------------------
+// Interactive Assessment Menu
+// --------------------------------------------------
+
+function showAssessmentMenu() {
+    if (isLoading) return;
+
+    if (!repoUrl) {
+        addAIMessage('Please start a conversation by providing a GitHub repository URL before running an audit.');
+        return;
+    }
+
+    const aDiv = document.createElement('div');
+    aDiv.className = 'msg-wrapper ai';
+
+    // Build the interactive menu HTML
+    aDiv.innerHTML = `
+        <div class="msg-bubble ai">
+            <div class="ai-analysis-card">
+                <div class="ai-card-header">
+                    <h4><i class="fa-solid fa-shield-halved"></i> Select Audit Scope</h4>
+                </div>
+                <div class="ai-card-body">
+                    <div class="ai-explanation">
+                        What type of assessment would you like to run on this repository?
+                        
+                        <div class="assessment-menu">
+                            <button class="assessment-chip" data-type="full">
+                                <i class="fa-solid fa-cubes"></i>
+                                <div>
+                                    Full Architecture Audit
+                                    <span>End-to-end structural and logic review.</span>
+                                </div>
+                            </button>
+                            
+                            <button class="assessment-chip" data-type="security">
+                                <i class="fa-solid fa-lock"></i>
+                                <div>
+                                    Security & Vulnerabilities
+                                    <span>Focus on auth, injections, and data safety.</span>
+                                </div>
+                            </button>
+                            
+                            <button class="assessment-chip" data-type="codeQuality">
+                                <i class="fa-solid fa-code"></i>
+                                <div>
+                                    Code Quality & Tech Debt
+                                    <span>Focus on anti-patterns and maintainability.</span>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Attach event listeners to the new buttons
+    const chips = aDiv.querySelectorAll('.assessment-chip');
+    chips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            // Remove the menu from the UI once a selection is made
+            aDiv.remove(); 
+            
+            const type = chip.getAttribute('data-type');
+            const selectedAudit = AUDIT_PROMPTS[type];
+            
+            // Trigger the backend workflow
+            sendMessage(selectedAudit.api, selectedAudit.display);
+        });
+    });
+
+    container.appendChild(aDiv);
+    scrollToBottom();
+}
+
+// --------------------------------------------------
+// Send Message (Fixed to handle URL-only and auto-attach repo)
+// --------------------------------------------------
+
+async function sendMessage(hiddenApiPrompt = null, customDisplayMsg = null) {
+
+    if (isLoading) return;
+
+    const rawInputText = input.value.trim();
+    const text = hiddenApiPrompt !== null ? hiddenApiPrompt : rawInputText;
+
+    if (!text) return;
+
+    // ----------------------------------------------
+    // 1. Detect or update repoUrl
+    // ----------------------------------------------
+    const detectedUrl = extractRepoUrl(text);
+    if (detectedUrl) {
+        repoUrl = detectedUrl;
+    }
+
+    // ----------------------------------------------
+    // 2. Handle URL-only submission (No question provided)
+    // ----------------------------------------------
+    // If the user typed *only* a GitHub URL, don't hit the agent pipeline yet. 
+    // Just acknowledge it locally so the UI feels responsive.
+    if (hiddenApiPrompt === null && repoUrl && text === repoUrl) {
+        addUserMessage(text);
+        input.value = '';
+        addAIMessage(`Repository successfully loaded and indexed: ${repoUrl}\n\nYou can now ask questions about it or run a Deep Audit from the sidebar!`);
+        return;
+    }
+
+    // If they tried to run an audit or ask a question without ever giving a URL first
+    if (!repoUrl) {
+        addAIMessage('Please start by pasting a GitHub repository URL.');
+        return;
+    }
+
+    // ----------------------------------------------
+    // 3. Build API message (Always ensure repoUrl + prompt are sent)
+    // ----------------------------------------------
+    let apiMessage;
+    if (text.includes(repoUrl)) {
+        apiMessage = text;
+    } else {
+        // Automatically prepend the stored repoUrl to any button/menu action!
+        apiMessage = `${repoUrl} ${text}`;
+    }
+
+    // ----------------------------------------------
+    // 4. Display user message
+    // ----------------------------------------------
+    const textToShow = customDisplayMsg !== null ? customDisplayMsg : rawInputText;
+    addUserMessage(textToShow);
+
+    if (hiddenApiPrompt === null) {
+        input.value = '';
+    }
+
+    isLoading = true;
+    sendBtn.disabled = true;
+
+    addLoadingMessage();
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'text/event-stream'
+            },
+            body: JSON.stringify({
+                message: apiMessage
+            })
+        });
+
+        if (!response.ok) {
+            let errorText = await response.text();
+            removeLoadingMessage();
+            addAIMessage(`Error: ${errorText || 'Something went wrong while processing your request.'}`);
+            return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        let buffer = '';
+        let finalAnswer = '';
+        let sawError = false;
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const blocks = buffer.split('\n\n');
+            buffer = blocks.pop();
+
+            for (const rawBlock of blocks) {
+                if (!rawBlock.trim()) continue;
+                const parsed = parseSSEEvent(rawBlock);
+                if (!parsed) continue;
+
+                if (parsed.eventType === 'status') {
+                    updateLoadingStatus(parsed.data.message || 'Working...');
+                } else if (parsed.eventType === 'answer') {
+                    finalAnswer = parsed.data.answer || '';
+                } else if (parsed.eventType === 'error') {
+                    sawError = true;
+                    removeLoadingMessage();
+                    addAIMessage(`Error: ${parsed.data.message || 'Something went wrong.'}`);
+                }
+            }
+            if (sawError) break;
+        }
+
+        if (sawError) return;
+
+        removeLoadingMessage();
+
+        if (finalAnswer) {
+            addAIMessage(finalAnswer);
+        } else {
+            addAIMessage('The agent completed the request but returned no answer.');
+        }
+
+    } catch (error) {
+        removeLoadingMessage();
+        console.error('API Error:', error);
+        addAIMessage('Unable to connect to the RepoAI backend.');
+    } finally {
+        isLoading = false;
+        sendBtn.disabled = false;
+        input.focus();
+    }
+}
+
+    // --------------------------------------------------
+    // Copy Answer
+    // --------------------------------------------------
+
+    function copyAnswer(button) {
+
+        const card = button.closest('.ai-analysis-card');
+        const body = card.querySelector('.ai-explanation');
+
+        navigator.clipboard.writeText(body.innerText);
+
+        const original = button.innerHTML;
+
+        button.innerHTML =
+            '<i class="fa-solid fa-check"></i> Copied';
+
+        setTimeout(() => {
+            button.innerHTML = original;
+        }, 1500);
+    }
+
+    // --------------------------------------------------
+// Download Report as .md file
+// --------------------------------------------------
+
+function downloadReport(button) {
+    const card = button.closest('.ai-analysis-card');
+    const body = card.querySelector('.ai-explanation');
+
+    // Extract the raw inner text of the report
+    const reportText = body.innerText;
+
+    // Create a Blob containing the text data
+    const blob = new Blob([reportText], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+
+    // Create a temporary hidden anchor element to trigger the download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `RepoAI_Assessment_Report_${new Date().toISOString().slice(0, 10)}.md`;
+    
+    document.body.appendChild(a);
+    a.click();
+
+    // Clean up the object URL and remove the element
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // Visual feedback on the button
+    const original = button.innerHTML;
+    button.innerHTML = '<i class="fa-solid fa-check"></i> Downloaded';
+    setTimeout(() => {
+        button.innerHTML = original;
+    }, 1500);
+}
+
+
+    // --------------------------------------------------
+    // Scroll
+    // --------------------------------------------------
+
+    function scrollToBottom() {
+        container.scrollTop = container.scrollHeight;
+    }
+
+
+    // --------------------------------------------------
+    // Events
+    // --------------------------------------------------
+
+    sendBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        sendMessage();
+    });
+
+    input.addEventListener('keypress', (e) => {
+
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            sendMessage();
+        }
+
+    });
+
+
+    // --------------------------------------------------
+    // New Chat
+    // --------------------------------------------------
+
+    newChatBtn.addEventListener('click', (e) => {
+
+        e.preventDefault();
+
+        repoUrl = null;
+
+        container.innerHTML = '';
+
+        input.value = '';
+
+        input.placeholder =
+            'Paste GitHub URL + ask your first question...';
+
+        input.focus();
+    });
+    </script>
+</body>
+</html>

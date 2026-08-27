@@ -1,0 +1,22 @@
+# Environment Variables (CRITICAL)
+.env
+
+# Virtual Environment
+repo_explainer_env/
+venv/
+env/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Databases & Logs
+*.sqlite3
+db.sqlite3
+*.log
+
+# OS Files
+.DS_Store
+.vscode/
+.idea/
