@@ -109,3 +109,12 @@ Once the server is running, open `frontend/index.html` in your web browser to st
 *   **Dynamic Parallelism:** The Supervisor uses LangGraph's `Send()` API to route multiple independent tasks to the Explorer and Search agents concurrently.
 *   **Stateless Sub-Agents:** To prevent context bloat, sub-agents run without checkpointers. Their temporary state is managed and wiped by the top-level graph via a custom `add_or_reset` reducer.
 *   **AST-Powered Code Reading:** Rather than dumping whole files into the context window, the Search agent uses Python's Abstract Syntax Tree (AST) to extract exact functions and classes by name.
+
+---
+
+## 👨‍💻 About the Developer
+
+Developed by **Sheheryar**, an AI Engineer specializing in Agentic AI, Large Language Models, and multi-agent systems. This project was built from scratch to explore stateful LLM orchestration, dynamic planning, and advanced backend integrations using LangGraph and FastAPI.
+
+- **GitHub:** [@Sheheryar7244](https://github.com/Sheheryar7244)
+- **LinkedIn:** [www.linkedin.com/in/sheheryar-khan-19958535a]
